@@ -34,7 +34,7 @@
 #include "DataFormats/SiStripDigi/interface/SiStripRawDigi.h"
 
 // Utilities
-#include <RecoLocalTracker/TreeWrapper/interface/TreeWrapper.h>
+#include <CalibTracker/TreeWrapper/interface/TreeWrapper.h>
 #define BRANCH(NAME, ...) __VA_ARGS__& NAME = tree[#NAME].write<__VA_ARGS__>()
 
 // ROOT includes
