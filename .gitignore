@@ -1,0 +1,13 @@
+# vi stuff
+*.swp
+
+# python stuff
+__init__.py
+*.pyc
+
+# ROOT stuff
+*.root
+
+# plots
+*.pdf
+*.png
