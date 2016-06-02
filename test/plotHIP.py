@@ -41,6 +41,6 @@ for i in xrange(nEntries):
     latexLabel.SetTextSize(0.75 * c1.GetTopMargin())
     latexLabel.SetNDC()
     latexLabel.SetTextFont(42) # helvetica
-    latexLabel.DrawLatex(0.27, 0.96, "orbit %i  bx %i  detid %i" % (chain.orbit, chain.bx, chain.detid))
+    latexLabel.DrawLatex(0.27, 0.96, "lumi %i  orbit %i  bx %i  detid %i" % (chain.lumi, chain.orbit, chain.bx, chain.detid))
     c1.Print("plots/hip_%i.png" % i)
 
