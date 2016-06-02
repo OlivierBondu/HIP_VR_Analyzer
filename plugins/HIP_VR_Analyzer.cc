@@ -32,6 +32,8 @@
 // DataFormats
 #include "DataFormats/Common/interface/DetSetVector.h"
 #include "DataFormats/SiStripDigi/interface/SiStripRawDigi.h"
+#include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
+#include "DataFormats/Common/interface/DetSetVectorNew.h"
 
 // Utilities
 #include <RecoLocalTracker/TreeWrapper/interface/TreeWrapper.h>
@@ -71,14 +73,20 @@ class HIP_VR_Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  
         ROOT::TreeWrapper tree;
         unsigned int nHIPs;
 
+        // event info
+        BRANCH(run, unsigned int);
+        BRANCH(lumi, unsigned int);
+        BRANCH(event, unsigned int);
         BRANCH(bx, unsigned int);
         BRANCH(orbit, unsigned int);
-        BRANCH(event, unsigned int);
+        // subdet info
         BRANCH(detid, unsigned int);
+        BRANCH(subDetector, unsigned int);
         BRANCH(napv, unsigned int);
         BRANCH(adc, std::vector<unsigned int>);
         BRANCH(strip, std::vector<unsigned int>);
         BRANCH(baseline, std::vector<unsigned int>);
+        BRANCH(clusteredstrip, std::vector<unsigned int>);
 };
 
 //
@@ -99,6 +107,7 @@ HIP_VR_Analyzer::HIP_VR_Analyzer(const edm::ParameterSet& iConfig):
    //now do what ever initialization is needed
 //   usesResource("TFileService");
     consumes< edm::DetSetVector<SiStripRawDigi> >(edm::InputTag("siStripDigis", "VirginRaw"));
+    consumes< edmNew::DetSetVector<SiStripCluster> >(edm::InputTag("siStripClusters", ""));
     m_output.reset(TFile::Open(m_output_filename.c_str(), "recreate"));
 }
 
@@ -125,6 +134,8 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     edm::Handle< edm::DetSetVector<SiStripRawDigi> > vecSiStripDigi;
     iEvent.getByLabel("siStripDigis", "VirginRaw", vecSiStripDigi);
 
+    edm::Handle< edmNew::DetSetVector<SiStripCluster> > vecSiStripCluster;
+    iEvent.getByLabel("siStripClusters", "", vecSiStripCluster);
 
     std::map<unsigned int, unsigned int> detid_apv_blacklist;
 /*
@@ -138,9 +149,11 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     for (auto it_vecSiStripDigi = vecSiStripDigi->begin(); it_vecSiStripDigi != vecSiStripDigi->end(); ++it_vecSiStripDigi)
     { // loop over detid
         bool hasAHIP = false;
+        run = iEvent.id().run();
+        lumi = iEvent.id().luminosityBlock();
+        event = iEvent.id().event();
         orbit = iEvent.orbitNumber();
         bx = iEvent.bunchCrossing();
-        event = iEvent.id().event();
         detid = it_vecSiStripDigi->detId();
         napv = it_vecSiStripDigi->size() / 128;
         std::vector<int> adc_sorted;
@@ -154,6 +167,7 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
             iapv = istrip / 128;
             adc.push_back(it_SiStripDigi->adc());
             strip.push_back(istrip);
+            clusteredstrip.push_back(0); // We will fill this later when looping over the clusters, but we can initialize this now.
             adc_sorted.push_back(it_SiStripDigi->adc());
             if (istrip % 128 == 127)
             { // last strip for the apv, store the adc vector for sorting and prepare a new empty one
@@ -190,7 +204,28 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
             } // end of if strip is the last of the apv
         } // end of loop over all the strips in the module
         if (hasAHIP)
+        { // if there is a HIP from the strip data, then find the cluster informations
+            std::cout << "There is a HIP, saving the module data" << std::endl;
+            for (auto it_vecSiStripCluster = vecSiStripCluster->begin(); it_vecSiStripCluster != vecSiStripCluster->end(); ++it_vecSiStripCluster)
+            { // loop over detid
+                if (detid != it_vecSiStripCluster->detId())
+                    continue;
+                for (auto it_SiStripCluster = it_vecSiStripCluster->begin(); it_SiStripCluster != it_vecSiStripCluster->end(); ++it_SiStripCluster)
+                { // loop over cluster
+                    std::cout
+                        << "\tcharge= " << it_SiStripCluster->charge()
+                        << "\tfirstStrip= " << it_SiStripCluster->firstStrip()
+                        << std::endl;
+                    for (auto it_amplitudes = (it_SiStripCluster->amplitudes()).begin(); it_amplitudes != (it_SiStripCluster->amplitudes()).end(); ++it_amplitudes)
+                    { // Loop over amplitudes
+                        std::cout
+                            << "\t\tadc= " << *it_amplitudes
+                            << std::endl;
+                    } // end of loop over cluster amplitudes
+                } // end of loop over module clusters
+            } // end of loop over detid
             tree.fill();
+        }
         adc.clear();
     } // end of loop over modules
 } // end of analyse
