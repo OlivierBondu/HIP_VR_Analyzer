@@ -31,9 +31,12 @@
 
 // DataFormats
 #include "DataFormats/Common/interface/DetSetVector.h"
+#include "DataFormats/Common/interface/DetSetVectorNew.h"
 #include "DataFormats/SiStripDigi/interface/SiStripRawDigi.h"
 #include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
-#include "DataFormats/Common/interface/DetSetVectorNew.h"
+#include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
+#include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
+#include "CalibTracker/SiStripCommon/interface/TkDetMap.h"
 
 // Utilities
 #include <RecoLocalTracker/TreeWrapper/interface/TreeWrapper.h>
@@ -67,11 +70,19 @@ class HIP_VR_Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  
         virtual void endJob() override;
 
         // ----------member data ---------------------------
-        std::string m_output_filename;
         std::unique_ptr<TFile> m_output;
         TTree *tree_;
         ROOT::TreeWrapper tree;
         unsigned int nHIPs;
+        TkDetMap* tkDetMap_;
+        TkLayerMap* tkLayerMap_;
+        SiStripDetId sistripdetid;
+
+        // Algo parameters
+        bool m_debug;
+        unsigned int m_lowbaseline_adc_threshold;
+        unsigned int m_hip_adc_threshold;
+        std::string m_output_filename;
 
         // event info
         BRANCH(run, unsigned int);
@@ -82,6 +93,7 @@ class HIP_VR_Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  
         // subdet info
         BRANCH(detid, unsigned int);
         BRANCH(subDetector, unsigned int);
+        BRANCH(layer, std::string);
         BRANCH(napv, unsigned int);
         BRANCH(adc, std::vector<unsigned int>);
         BRANCH(strip, std::vector<unsigned int>);
@@ -102,6 +114,9 @@ class HIP_VR_Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  
 //
 
 HIP_VR_Analyzer::HIP_VR_Analyzer(const edm::ParameterSet& iConfig):
+    m_debug(iConfig.getParameter<bool>("debug")),
+    m_lowbaseline_adc_threshold(iConfig.getParameter<unsigned int>("lowbaseline_adc_threshold")),
+    m_hip_adc_threshold(iConfig.getParameter<unsigned int>("hip_adc_threshold")),
     m_output_filename(iConfig.getParameter<std::string>("output"))
 {
    //now do what ever initialization is needed
@@ -109,6 +124,7 @@ HIP_VR_Analyzer::HIP_VR_Analyzer(const edm::ParameterSet& iConfig):
     consumes< edm::DetSetVector<SiStripRawDigi> >(edm::InputTag("siStripDigis", "VirginRaw"));
     consumes< edmNew::DetSetVector<SiStripCluster> >(edm::InputTag("siStripClusters", ""));
     m_output.reset(TFile::Open(m_output_filename.c_str(), "recreate"));
+    tkDetMap_ = edm::Service<TkDetMap>().operator->();
 }
 
 
@@ -155,6 +171,12 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
         orbit = iEvent.orbitNumber();
         bx = iEvent.bunchCrossing();
         detid = it_vecSiStripDigi->detId();
+        sistripdetid = SiStripDetId(detid);
+        subDetector = sistripdetid.subDetector();
+//        int & b = 369136670;
+//        std::string a = tkDetMap_->getLayerName(b);
+        int layerid =  tkLayerMap_->layerSearch(detid);
+        layer = tkDetMap_->getLayerName(layerid);
         napv = it_vecSiStripDigi->size() / 128;
         std::vector<int> adc_sorted;
         unsigned int istrip = 0;
@@ -162,6 +184,7 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
         adc.clear();
         baseline.clear();
         strip.clear();
+        clusteredstrip.clear();
         for (auto it_SiStripDigi = it_vecSiStripDigi->begin(); it_SiStripDigi != it_vecSiStripDigi->end(); ++it_SiStripDigi, ++istrip)
         { // loop over strips (gotta figure the number of apv on your own)
             iapv = istrip / 128;
@@ -181,54 +204,67 @@ HIP_VR_Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
                 if (
                     ((detid_apv_blacklist.find(detid) == detid_apv_blacklist.end())
                     || (detid_apv_blacklist[detid] != iapv))
-                    && (base < 75 && maxadc > 0 && maxadc > 200)
+                    && (base < m_lowbaseline_adc_threshold && maxadc > 0 && maxadc > m_hip_adc_threshold)
                     )
                 {
                     nHIPs++;
                     hasAHIP = true;
-/*
-                    std::cout << "New HIP candidate"
-//                        << "\tnHIPs= " << nHIPs
-                        << "\torbit= " << orbit
-                        << "\tbx= " << bx
-                        << "\tevent= " << event
-                        << "\tdetid= " << detid
-                        << "\tiapv= " << iapv
-                        << "\tbaseline= " << adc_sorted[64] 
-                        << "\tfirstAmplitude= " << adc_sorted[0]
-                        << "\tlastAmplitude= " << adc_sorted[127]
-                        << std::endl;
-*/
+                    if (m_debug)
+                    {
+                        std::cout << "New HIP candidate"
+                            << "\torbit= " << orbit
+                            << "\tbx= " << bx
+                            << "\tevent= " << event
+                            << "\tdetid= " << detid
+                            << "\tsubDetector= " << subDetector
+                            << "\tlayer= " << ((detid>>14)&0x7)
+                            << "\tlayer= " << layer
+                            << "\tiapv= " << iapv
+                            << "\tbaseline= " << adc_sorted[64] 
+                            << "\tfirstAmplitude= " << adc_sorted[0]
+                            << "\tlastAmplitude= " << adc_sorted[127]
+                            << std::endl;
+                    }
                 }
                 adc_sorted.clear();
             } // end of if strip is the last of the apv
         } // end of loop over all the strips in the module
         if (hasAHIP)
         { // if there is a HIP from the strip data, then find the cluster informations
-            std::cout << "There is a HIP, saving the module data" << std::endl;
+            if (m_debug)
+            {
+                std::cout << "There is a HIP, saving the module data" << std::endl;
+            }
             for (auto it_vecSiStripCluster = vecSiStripCluster->begin(); it_vecSiStripCluster != vecSiStripCluster->end(); ++it_vecSiStripCluster)
             { // loop over detid
                 if (detid != it_vecSiStripCluster->detId())
                     continue;
                 for (auto it_SiStripCluster = it_vecSiStripCluster->begin(); it_SiStripCluster != it_vecSiStripCluster->end(); ++it_SiStripCluster)
                 { // loop over cluster
-                    std::cout
-                        << "\tcharge= " << it_SiStripCluster->charge()
-                        << "\tfirstStrip= " << it_SiStripCluster->firstStrip()
-                        << std::endl;
-                    for (auto it_amplitudes = (it_SiStripCluster->amplitudes()).begin(); it_amplitudes != (it_SiStripCluster->amplitudes()).end(); ++it_amplitudes)
-                    { // Loop over amplitudes
+                    if (m_debug)
+                    {
                         std::cout
-                            << "\t\tadc= " << *it_amplitudes
+                            << "\tcharge= " << it_SiStripCluster->charge()
+                            << "\tfirstStrip= " << it_SiStripCluster->firstStrip()
                             << std::endl;
+                    }
+                    for (unsigned int i_amplitude = 0; i_amplitude < (it_SiStripCluster->amplitudes()).size(); i_amplitude++)
+                    { // Loop over amplitudes
+                        clusteredstrip[it_SiStripCluster->firstStrip() + i_amplitude] = (unsigned int)(it_SiStripCluster->amplitudes())[i_amplitude];
+                        if (m_debug)
+                        {
+                            std::cout
+                                << "\t\tadc= " << (int)(it_SiStripCluster->amplitudes())[i_amplitude]
+                                << std::endl;
+                        }
                     } // end of loop over cluster amplitudes
                 } // end of loop over module clusters
             } // end of loop over detid
             tree.fill();
-        }
+        } // end of if hasAHIP
         adc.clear();
     } // end of loop over modules
-} // end of analyse
+} // end of analyze
 
 
 // ------------ method called once each job just before starting event loop  ------------
