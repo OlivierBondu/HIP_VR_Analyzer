@@ -26,57 +26,23 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 #process.MessageLogger.cerr.threshold  = cms.untracked.string('DEBUG')
 #process.MessageLogger.debugModules = cms.untracked.vstring('*')
 
-datasets = []
-for i in range(0,1):
-    datasets.append('/VRRandom%d/Run2016B-v2/RAW' % i)
-
-
-def get_dataset_files(dataset):
-    print 'get files for dataset %s' % dataset
-    import subprocess, json
-    j = subprocess.check_output(['das_client', '--format', 'json', '--query', 'file dataset=%s run=273162' % dataset])
-    data = json.loads(j)
-    files = []
-    for d in data["data"]:
-        for f in d['file']:
-            if 'dataset' in f:
-                o = subprocess.check_output(['edmFileUtil', '-f', str('root://xrootd.unl.edu//%s') % str(f['name']), '--eventsInLumis'])
-                for line in o.split('\n'):
-                    if '273162' in line:
-                        print line
-                        if 50 <= int(line.split()[1]) <= 55:
-                            print '\tkeeping file %s' % f['name']
-                            files.append(f['name'])
-            
-    return [str('root://xrootd.unl.edu//%s') % str(f) for f in files]
-
-files = []
-datasets = []
-if len(datasets) > 0:
-    for dataset in datasets:
-        for f in get_dataset_files(dataset):
-            files.append(f)
-else:
-    files = [
+# Input source
+process.source = cms.Source("PoolSource",
+    fileNames = cms.untracked.vstring(
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuidePythonTips#Running_on_more_than_255_files
+#            *tuple(files)
+# VRandom - v2
         '/store/data/Run2016B/VRRandom0/RAW/v2/000/273/162/00000/0062380D-2B18-E611-AB05-02163E0126C0.root', # 51, 434
 #        '/store/data/Run2016B/VRRandom0/RAW/v2/000/273/162/00000/0493FB78-2B18-E611-80D7-02163E014701.root', # 53, 454
 #        '/store/data/Run2016B/VRRandom0/RAW/v2/000/273/162/00000/16C0C21D-2B18-E611-9AF9-02163E0138AF.root', # 55, 439
 #        '/store/data/Run2016B/VRRandom1/RAW/v2/000/273/162/00000/242C6308-2B18-E611-A475-02163E01377D.root', # 54, 451
-        '/store/data/Run2016B/VRRandom2/RAW/v2/000/273/162/00000/0A931DBC-2918-E611-B1D4-02163E012899.root', # 51, 447
+#        '/store/data/Run2016B/VRRandom2/RAW/v2/000/273/162/00000/0A931DBC-2918-E611-B1D4-02163E012899.root', # 51, 447
 #        '/store/data/Run2016B/VRRandom2/RAW/v2/000/273/162/00000/1E69B4BD-2918-E611-9EA8-02163E011A27.root', # 54, 451
 #        '/store/data/Run2016B/VRRandom3/RAW/v2/000/273/162/00000/0284A067-2B18-E611-BF5F-02163E011F40.root', # 55, 431
 #        '/store/data/Run2016B/VRRandom4/RAW/v2/000/273/162/00000/227BF06F-2A18-E611-946F-02163E01216A.root', # 55, 454
 #        '/store/data/Run2016B/VRRandom6/RAW/v2/000/273/162/00000/10E9CC5F-2A18-E611-A366-02163E012160.root', # 55, 445
 #        '/store/data/Run2016B/VRRandom6/RAW/v2/000/273/162/00000/2CFBCB5A-2A18-E611-92A9-02163E011C19.root', # 53, 449
-        '/store/data/Run2016B/VRRandom7/RAW/v2/000/273/162/00000/10BF9A5C-2A18-E611-9E25-02163E011DD6.root', # 51, 222
-        ]
-    files = [str('root://xrootd.unl.edu//%s') % str(f) for f in files]
-
-# Input source
-process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(
-# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuidePythonTips#Running_on_more_than_255_files
-            *tuple(files)
+#        '/store/data/Run2016B/VRRandom7/RAW/v2/000/273/162/00000/10BF9A5C-2A18-E611-9E25-02163E011DD6.root', # 51, 222
         ),
 #    lumisToProcess = cms.untracked.VLuminosityBlockRange('273162:50-273162:55'),
     secondaryFileNames = cms.untracked.vstring()
@@ -133,7 +99,7 @@ process.RECOSIMoutput = cms.OutputModule("PoolOutputModule",
         filterName = cms.untracked.string('')
     ),
     eventAutoFlushCompressedSize = cms.untracked.int32(5242880),
-    fileName = cms.untracked.string('output_VR_LS51_v2.root'),
+    fileName = cms.untracked.string('output_VR_DIGIRECO.root'),
 #    outputCommands = process.RECOSIMEventContent.outputCommands,
     outputCommands = cms.untracked.vstring(
         'keep *',

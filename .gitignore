@@ -11,3 +11,8 @@ __init__.py
 # plots
 *.pdf
 *.png
+
+# CRAB3 stuff
+test/tasks/*
+crab_*py
+

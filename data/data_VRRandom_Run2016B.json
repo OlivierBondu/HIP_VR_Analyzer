@@ -1,0 +1,42 @@
+{
+  "/VRRandom0/Run2016B-v2/RAW": {
+    "name": "VRRandom0_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom1/Run2016B-v2/RAW": {
+    "name": "VRRandom1_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom2/Run2016B-v2/RAW": {
+    "name": "VRRandom2_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom3/Run2016B-v2/RAW": {
+    "name": "VRRandom3_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom4/Run2016B-v2/RAW": {
+    "name": "VRRandom4_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom5/Run2016B-v2/RAW": {
+    "name": "VRRandom5_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom6/Run2016B-v2/RAW": {
+    "name": "VRRandom6_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  },
+  "/VRRandom7/Run2016B-v2/RAW": {
+    "name": "VRRandom7_Run2016B-v2",
+    "units_per_job": 1,
+    "run_range": [273162, 273162]
+  }
+}

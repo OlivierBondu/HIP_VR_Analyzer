@@ -53,9 +53,10 @@ for i in xrange(nEntries):
     latexLabel.SetTextSize(0.75 * c1.GetTopMargin())
     latexLabel.SetNDC()
     latexLabel.SetTextFont(42) # helvetica
-    latexLabel.DrawLatex(0.27, 0.96, "lumi %i  orbit %i  bx %i" % (chain.lumi, chain.orbit, chain.bx))
-    latexLabel.DrawLatex(0.17, 0.86, "detid %i %s" % (chain.detid, subdet[chain.subDetector]))
-    legend = TLegend(0.57,0.65,0.89,0.92)
+    latexLabel.DrawLatex(0.27, 0.96, "lumi %i  orbit %i  bx %i  event %i" % (chain.lumi, chain.orbit, chain.bx, chain.event))
+    latexLabel.DrawLatex(0.17, 0.86, "detid %i" % (chain.detid))
+    latexLabel.DrawLatex(0.17, 0.81, "%s" % (chain.layer))
+    legend = TLegend(0.57,0.70,0.83,0.92)
     legend.SetTextFont(42)
     legend.SetFillStyle(0)
     legend.SetFillColor(ROOT.kWhite)
@@ -65,5 +66,6 @@ for i in xrange(nEntries):
     legend.AddEntry(h_baseline, 'baseline', 'l')
     legend.AddEntry(h_cluster, 'clusters', 'l')
     legend.Draw("same")
+    c1.Print("plots/hip_%i.pdf" % i)
     c1.Print("plots/hip_%i.png" % i)
 
